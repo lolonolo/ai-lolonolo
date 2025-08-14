@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lolonolo AI Test</title>
+    <title>Lolonolo AI Asistan</title>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -11,22 +11,122 @@
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
             background-color: #f0f2f5;
             margin: 0;
-            color: #1c1e21;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         h1 {
-            font-size: 2.5rem;
+            font-size: 2rem;
+            color: #1c1e21;
+            text-align: center;
+            margin-top: 0;
         }
-        p {
-            font-size: 1.2rem;
-            color: #606770;
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid #dddfe2;
+            resize: vertical;
+            min-height: 80px;
+            box-sizing: border-box;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            background-color: #1877f2;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        button:disabled {
+            background-color: #90baf9;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #166fe5;
+        }
+        #response-container {
+            width: 100%;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f7f7f7;
+            border-radius: 6px;
+            white-space: pre-wrap; /* Cevabın düzgün görünmesini sağlar */
+            font-family: Consolas, Monaco, monospace;
+            font-size: 0.95rem;
+            color: #333;
+            min-height: 50px;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
-    <h1>Lolonolo AI Test Sayfası</h1>
-    <p>Aşama 1 Başarıyla Tamamlandı!</p>
+    <div class="container">
+        <h1>Lolonolo AI Asistan</h1>
+        <textarea id="prompt-input" placeholder="Buraya bir soru sorun..."></textarea>
+        <button id="ask-button">Gönder</button>
+        <div id="response-container">Yapay zekanın cevabı burada görünecek...</div>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('prompt-input');
+        const askButton = document.getElementById('ask-button');
+        const responseContainer = document.getElementById('response-container');
+
+        askButton.addEventListener('click', async () => {
+            const prompt = promptInput.value;
+            if (!prompt) {
+                alert('Lütfen bir soru yazın.');
+                return;
+            }
+
+            // Butonu devre dışı bırak ve bekleme mesajı göster
+            askButton.disabled = true;
+            askButton.textContent = 'Düşünüyor...';
+            responseContainer.textContent = 'Yapay zeka cevap hazırlıyor...';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Bir hata oluştu: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                responseContainer.textContent = data.reply;
+
+            } catch (error) {
+                console.error('Hata:', error);
+                responseContainer.textContent = `Bir hata oluştu. Lütfen tekrar deneyin. Detay: ${error.message}`;
+            } finally {
+                // Butonu tekrar aktif et
+                askButton.disabled = false;
+                askButton.textContent = 'Gönder';
+            }
+        });
+    </script>
 </body>
 </html>
