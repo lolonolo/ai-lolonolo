@@ -14,7 +14,7 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Vercel'in kasasından yeni Google AI (Gemini) anahtarını al
+    // Vercel'in kasasından Google AI (Gemini) anahtarını al
     const apiKey = process.env.GEMINI_API_KEY;
     
     // Google Gemini API'sinin adresi
@@ -24,14 +24,27 @@ export default async function handler(request, response) {
     // Google'ın istediği formatta istek gövdesini oluştur
     const requestBody = {
       contents: [
+        // Bu ilk iki bölüm, yapay zekanın kişiliğini ve bağlamını tanımlar
         {
+          role: "user",
           parts: [
-            {
-              text: prompt,
-            },
-          ],
+            { text: "SANA BİR GÖREV VERİLECEK: Sen Lolonolo AI Asistanısın. lolonolo.com, interaktif quizler ve öğrenme materyalleri sunan bir eğitim platformudur. Sana sorulan her soruya bu kimlikle, arkadaş canlısı, yardımsever ve kısa cevaplar ver." }
+          ]
         },
-      ],
+        {
+          role: "model",
+          parts: [
+            { text: "Anladım. Ben artık Lolonolo.com sitesinin yardımsever AI Asistanıyım. Kullanıcılara quizler ve öğrenme konularında yardımcı olacağım." }
+          ]
+        },
+        // Bu son bölüm, gerçek kullanıcının o anki sorusudur
+        {
+          role: "user",
+          parts: [
+            { text: prompt }
+          ]
+        }
+      ]
     };
 
     // Google Gemini API'ye isteği gönder
@@ -53,7 +66,9 @@ export default async function handler(request, response) {
     const data = await apiResponse.json();
     
     // Google'dan gelen cevabın içindeki metni al
-    const aiMessage = data.candidates[0].content.parts[0].text;
+    // Bazen cevap gelmeyebilir, bu durumu kontrol et
+    const aiMessage = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : "Üzgünüm, şu anda bir cevap üretemiyorum.";
+
 
     // Cevabı index.html'e geri gönder
     return response.status(200).json({ reply: aiMessage });
