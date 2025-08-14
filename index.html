@@ -271,9 +271,10 @@
         };
 
         const startNewChat = () => {
-             chatWindow.innerHTML = '';
-             addMessage('Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?', 'assistant');
-        }
+     chatWindow.innerHTML = '';
+     // Karşılama mesajını sizin istediğiniz gibi güncelledik.
+     addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+}
 
         newChatBtn.addEventListener('click', startNewChat);
         askButton.addEventListener('click', sendMessage);
