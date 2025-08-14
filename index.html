@@ -67,17 +67,11 @@
             margin: 0;
             overflow-y: auto;
         }
-        .chat-history li {
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 5px;
-            cursor: pointer;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .chat-history li:hover {
-            background-color: #e0e0e0;
+        .no-history {
+            text-align: center;
+            color: var(--secondary-text);
+            font-size: 0.9rem;
+            padding: 20px;
         }
         .chat-view {
             flex-grow: 1;
@@ -181,12 +175,12 @@
                 New Chat
             </button>
             <div class="chat-history">
-                <h3>History</h3>
+                <h3>Geçmiş Sohbetler</h3>
                 <ul id="history-list">
-                    <li>Osmanlı Tarihi Sınavı...</li>
-                    <li>Fas'ın başkenti neresidir?</li>
-                    <li>Lolonolo Nedir?</li>
-                </ul>
+                    </ul>
+                <div class="no-history">
+                    Henüz sohbet geçmişiniz yok.
+                </div>
             </div>
         </div>
         <div class="chat-view">
@@ -207,7 +201,6 @@
         const promptInput = document.getElementById('prompt-input');
         const askButton = document.getElementById('ask-button');
         const newChatBtn = document.getElementById('new-chat-btn');
-        const historyList = document.getElementById('history-list');
 
         const addMessage = (text, sender) => {
             const wrapper = document.createElement('div');
@@ -231,7 +224,6 @@
             promptInput.style.height = 'auto';
             askButton.disabled = true;
 
-            // Cevap için bekleme alanı oluştur
             const responseWrapper = document.createElement('div');
             responseWrapper.classList.add('message-wrapper', 'assistant');
             const responseElement = document.createElement('div');
@@ -261,16 +253,8 @@
             }
         };
 
-        // Yeni Sohbet Butonu
         newChatBtn.addEventListener('click', () => {
             chatWindow.innerHTML = '<div class="message-wrapper assistant"><div class="message">Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?</div></div>';
-        });
-
-        // Geçmiş Sohbet Tıklamaları (Şimdilik sadece bir uyarı)
-        historyList.addEventListener('click', (e) => {
-            if(e.target.tagName === 'LI'){
-                alert('Sohbet geçmişini yükleme özelliği bir sonraki aşamada eklenecektir.');
-            }
         });
 
         askButton.addEventListener('click', sendMessage);
@@ -280,8 +264,7 @@
                 sendMessage();
             }
         });
-
-        // Textarea'nın otomatik büyümesi
+        
         promptInput.addEventListener('input', () => {
             promptInput.style.height = 'auto';
             promptInput.style.height = `${promptInput.scrollHeight}px`;
