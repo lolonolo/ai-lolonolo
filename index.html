@@ -88,7 +88,7 @@
         .message-wrapper {
             display: flex;
             margin-bottom: 20px;
-            align-items: flex-end; /* İkon ve mesaj balonunu hizalar */
+            align-items: flex-end;
         }
         .avatar {
             width: 32px;
@@ -101,7 +101,7 @@
             justify-content: center;
             font-weight: bold;
             margin-right: 12px;
-            flex-shrink: 0; /* Küçülmesini engeller */
+            flex-shrink: 0;
         }
         .message {
             max-width: 80%;
@@ -188,7 +188,7 @@
         </div>
         <div class="chat-view">
             <div class="chat-window" id="chat-window">
-                 </div>
+            </div>
             <div class="input-area-wrapper">
                 <div class="input-area">
                     <textarea id="prompt-input" placeholder="Bir mesaj yaz..." rows="1"></textarea>
@@ -199,31 +199,62 @@
     </div>
 
     <script>
+        // --- YENİ BÖLÜM: MİNİ KÜTÜPHANE ---
+        // BU BÖLÜMÜ KENDİ DERSLERİNİZ VE URL'LERİNİZLE DOLDURUN
+        const lolonoloLibrary = {
+            'Tarih': 'https://lolonolo.com/ders/tarih',
+            'Coğrafya': 'https://lolonolo.com/ders/cografya',
+            'Matematik': 'https://lolonolo.com/ders/matematik',
+            'Vatandaşlık': 'https://lolonolo.com/ders/vatandaslik',
+            // İstediğiniz kadar ders ekleyebilirsiniz...
+        };
+
         const chatWindow = document.getElementById('chat-window');
         const promptInput = document.getElementById('prompt-input');
         const askButton = document.getElementById('ask-button');
         const newChatBtn = document.getElementById('new-chat-btn');
+        
+        // --- YENİ FONKSİYON: Cevabı Kütüphane İle Zenginleştirme ---
+        const enrichResponse = (responseText) => {
+            let enrichedText = responseText;
+            const keywordsFound = []; // Birden fazla link eklemek için
+
+            for (const [keyword, url] of Object.entries(lolonoloLibrary)) {
+                // Cevap metninde anahtar kelime (büyük/küçük harf duyarsız) geçiyor mu?
+                if (responseText.toLowerCase().includes(keyword.toLowerCase())) {
+                    keywordsFound.push({ keyword, url });
+                }
+            }
+
+            if (keywordsFound.length > 0) {
+                enrichedText += `\n\n📚 Daha fazla bilgi için Lolonolo kaynaklarına göz atın:`;
+                keywordsFound.forEach(item => {
+                    enrichedText += `\n- **${item.keyword}**: ${item.url}`;
+                });
+            }
+
+            return enrichedText;
+        };
 
         const addMessage = (text, sender) => {
             const wrapper = document.createElement('div');
             wrapper.classList.add('message-wrapper', sender);
 
-            // Eğer gönderen asistansa, ikonu ekle
             if (sender === 'assistant') {
                 const avatar = document.createElement('div');
                 avatar.classList.add('avatar');
-                avatar.textContent = 'LN'; // Lolonolo'nun baş harfleri
+                avatar.textContent = 'LN';
                 wrapper.appendChild(avatar);
             }
 
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
-            messageElement.textContent = text;
+            messageElement.innerHTML = text; // innerHTML olarak değiştirildi linklerin tıklanabilir olması için
             
             wrapper.appendChild(messageElement);
             chatWindow.appendChild(wrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight;
-            return messageElement; // Cevabı güncellemek için elementi geri döndür
+            return messageElement;
         };
 
         const sendMessage = async () => {
@@ -235,7 +266,7 @@
             promptInput.style.height = 'auto';
             askButton.disabled = true;
 
-            const responseElement = addMessage('...', 'assistant'); // Cevap için bekleme alanı oluştur
+            const responseElement = addMessage('...', 'assistant');
 
             try {
                 const response = await fetch('/api/chat', {
@@ -247,7 +278,11 @@
                 if (!response.ok) throw new Error('Network response was not ok.');
 
                 const data = await response.json();
-                responseElement.textContent = data.reply;
+                
+                // --- DEĞİŞİKLİK: Cevabı zenginleştirme fonksiyonunu çağır ---
+                const finalReply = enrichResponse(data.reply);
+                responseElement.innerHTML = finalReply.replace(/\n/g, '<br>'); // Satır atlamalarını HTML'e çevir
+
             } catch (error) {
                 responseElement.textContent = 'Bir hata oluştu. Lütfen tekrar deneyin.';
                 console.error('Fetch Error:', error);
@@ -258,7 +293,7 @@
         };
 
         const startNewChat = () => {
-             chatWindow.innerHTML = ''; // Sohbet penceresini temizle
+             chatWindow.innerHTML = '';
              addMessage('Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?', 'assistant');
         }
 
@@ -277,7 +312,6 @@
             promptInput.style.height = `${promptInput.scrollHeight}px`;
         });
         
-        // Sayfa ilk yüklendiğinde yeni bir sohbet başlat
         startNewChat();
     </script>
 </body>
