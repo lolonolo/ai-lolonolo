@@ -50,7 +50,7 @@
             border-radius: 8px;
             cursor: pointer;
             background-color: var(--container-bg);
-            color: var(--primary-text); /* <--- EKLEMENİZ GEREKEN SATIR BU */
+            color: var(--primary-text);
             transition: background-color 0.2s;
         }
         .new-chat-btn:hover {
@@ -87,7 +87,21 @@
         }
         .message-wrapper {
             display: flex;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end; /* İkon ve mesaj balonunu hizalar */
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0; /* Küçülmesini engeller */
         }
         .message {
             max-width: 80%;
@@ -154,17 +168,8 @@
             background-color: #90baf9;
             cursor: not-allowed;
         }
-
-        /* Mobil Cihazlar için Ayarlar */
         @media (max-width: 768px) {
-            .sidebar {
-                display: none; /* Kenar çubuğunu gizle */
-            }
-            .chat-container {
-                height: 100vh;
-                max-height: none;
-                border-radius: 0;
-            }
+            .sidebar { display: none; }
         }
     </style>
 </head>
@@ -177,17 +182,13 @@
             </button>
             <div class="chat-history">
                 <h3>Geçmiş Sohbetler</h3>
-                <ul id="history-list">
-                    </ul>
-                <div class="no-history">
-                    Henüz sohbet geçmişiniz yok.
-                </div>
+                <ul id="history-list"></ul>
+                <div class="no-history">Henüz sohbet geçmişiniz yok.</div>
             </div>
         </div>
         <div class="chat-view">
             <div class="chat-window" id="chat-window">
-                 <div class="message-wrapper assistant"><div class="message">Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?</div></div>
-            </div>
+                 </div>
             <div class="input-area-wrapper">
                 <div class="input-area">
                     <textarea id="prompt-input" placeholder="Bir mesaj yaz..." rows="1"></textarea>
@@ -207,6 +208,14 @@
             const wrapper = document.createElement('div');
             wrapper.classList.add('message-wrapper', sender);
 
+            // Eğer gönderen asistansa, ikonu ekle
+            if (sender === 'assistant') {
+                const avatar = document.createElement('div');
+                avatar.classList.add('avatar');
+                avatar.textContent = 'LN'; // Lolonolo'nun baş harfleri
+                wrapper.appendChild(avatar);
+            }
+
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             messageElement.textContent = text;
@@ -214,6 +223,7 @@
             wrapper.appendChild(messageElement);
             chatWindow.appendChild(wrapper);
             chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageElement; // Cevabı güncellemek için elementi geri döndür
         };
 
         const sendMessage = async () => {
@@ -225,14 +235,7 @@
             promptInput.style.height = 'auto';
             askButton.disabled = true;
 
-            const responseWrapper = document.createElement('div');
-            responseWrapper.classList.add('message-wrapper', 'assistant');
-            const responseElement = document.createElement('div');
-            responseElement.classList.add('message');
-            responseElement.textContent = '...';
-            responseWrapper.appendChild(responseElement);
-            chatWindow.appendChild(responseWrapper);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+            const responseElement = addMessage('...', 'assistant'); // Cevap için bekleme alanı oluştur
 
             try {
                 const response = await fetch('/api/chat', {
@@ -254,9 +257,12 @@
             }
         };
 
-        newChatBtn.addEventListener('click', () => {
-            chatWindow.innerHTML = '<div class="message-wrapper assistant"><div class="message">Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?</div></div>';
-        });
+        const startNewChat = () => {
+             chatWindow.innerHTML = ''; // Sohbet penceresini temizle
+             addMessage('Merhaba! Ben Lolonolo AI Asistanı. Sana nasıl yardımcı olabilirim?', 'assistant');
+        }
+
+        newChatBtn.addEventListener('click', startNewChat);
 
         askButton.addEventListener('click', sendMessage);
         promptInput.addEventListener('keydown', (event) => {
@@ -270,6 +276,9 @@
             promptInput.style.height = 'auto';
             promptInput.style.height = `${promptInput.scrollHeight}px`;
         });
+        
+        // Sayfa ilk yüklendiğinde yeni bir sohbet başlat
+        startNewChat();
     </script>
 </body>
 </html>
