@@ -1,62 +1,42 @@
-// Vercel'in sunucusuz fonksiyonları için standart başlangıç
 export default async function handler(request, response) {
-  // Sadece POST metoduyla gelen istekleri kabul et
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // index.html'den gönderilen soruyu al
     const { prompt } = await request.body;
-
-    // Eğer soru boşsa hata döndür
     if (!prompt) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Vercel'in kasasından Google AI (Gemini) anahtarını al
     const apiKey = process.env.GEMINI_API_KEY;
-    
-    // Google Gemini API'sinin adresi
-    // Hızlı ve verimli 'flash' modelini kullanıyoruz
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
-    // Google'ın istediği formatta istek gövdesini oluştur
+    // --- YENİ TALİMAT (SİSTEM PROMPT) ---
+    // Yapay zekaya hem kimliğini öğretiyoruz hem de ondan bir anahtar kelime çıkarmasını istiyoruz.
+    const systemInstruction = `
+      SANA BİR GÖREV VERİLECEK: Sen Lolonolo AI Asistanısın. lolonolo.com, interaktif quizler ve öğrenme materyalleri sunan bir eğitim platformudur. Sana sorulan her soruya bu kimlikle, arkadaş canlısı, yardımsever ve kısa cevaplar ver.
+      
+      ÇOK ÖNEMLİ KURAL: Cevabını verdikten sonra, eğer kullanıcının sorusu spesifik bir eğitim konusu (Tarih, Matematik, Psikoloji, Anatomi, Coğrafya, Felsefe vb.) içeriyorsa, cevabının en sonuna boş bir satır bırak ve şunu ekle: [Lokonolo Kaynak: Konu Adı]
+      Örnek 1: Kullanıcı "Fas'ın başkenti neresidir?" diye sorarsa, cevabın sonuna "[Lokonolo Kaynak: Coğrafya]" ekle.
+      Örnek 2: Kullanıcı "İnsan vücudundaki en büyük kemik hangisidir?" diye sorarsa, cevabın sonuna "[Lokonolo Kaynak: Anatomi]" ekle.
+      Örnek 3: Kullanıcı "Nasılsın?" gibi genel bir soru sorarsa, bu etiketi EKLEME. Sadece eğitim konularında ekle.
+    `;
+
     const requestBody = {
       contents: [
-        // Bu ilk iki bölüm, yapay zekanın kişiliğini ve bağlamını tanımlar
-        {
-          role: "user",
-          parts: [
-            { text: "SANA BİR GÖREV VERİLECEK: Sen Lolonolo AI Asistanısın. lolonolo.com, interaktif quizler ve öğrenme materyalleri sunan bir eğitim platformudur. Sana sorulan her soruya bu kimlikle, arkadaş canlısı, yardımsever ve kısa cevaplar ver." }
-          ]
-        },
-        {
-          role: "model",
-          parts: [
-            { text: "Anladım. Ben artık Lolonolo.com sitesinin yardımsever AI Asistanıyım. Kullanıcılara quizler ve öğrenme konularında yardımcı olacağım." }
-          ]
-        },
-        // Bu son bölüm, gerçek kullanıcının o anki sorusudur
-        {
-          role: "user",
-          parts: [
-            { text: prompt }
-          ]
-        }
+        { role: "user", parts: [{ text: systemInstruction }] },
+        { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım ve eğitim konularında kaynak etiketi ekleyeceğim." }] },
+        { role: "user", parts: [{ text: prompt }] }
       ]
     };
 
-    // Google Gemini API'ye isteği gönder
     const apiResponse = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
 
-    // Eğer Google'dan gelen cevapta bir hata varsa
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json();
       console.error('Google AI API Error:', errorData);
@@ -64,13 +44,32 @@ export default async function handler(request, response) {
     }
 
     const data = await apiResponse.json();
-    
-    // Google'dan gelen cevabın içindeki metni al
-    // Bazen cevap gelmeyebilir, bu durumu kontrol et
-    const aiMessage = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : "Üzgünüm, şu anda bir cevap üretemiyorum.";
+    let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
+    // --- YENİ BÖLÜM: Cevaptaki Etiketi Bul ve Linke Dönüştür ---
+    const regex = /\[Lokonolo Kaynak: (.*?)\]/g;
+    const matches = [...aiMessage.matchAll(regex)];
 
-    // Cevabı index.html'e geri gönder
+    if (matches.length > 0) {
+        let linksHtml = `<br><br>📚 **İlgili Lolonolo konuları:**`;
+        matches.forEach(match => {
+            const keyword = match[1].trim(); // Parantez içindeki kelimeyi al
+            
+            // Türkçe karakterleri ve boşlukları URL için uygun hale getir
+            const tagSlug = keyword.toLowerCase()
+                                .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                                .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                                .replace(/\s+/g, '-');
+            
+            const tagUrl = `https://lolonolo.com/tag/${tagSlug}`;
+            linksHtml += `<br>- <a href="${tagUrl}" target="_blank">${keyword}</a>`;
+        });
+        
+        // Orijinal etiketi temizle ve yerine oluşturulan linkleri koy
+        aiMessage = aiMessage.replace(regex, '').trim();
+        aiMessage += linksHtml;
+    }
+
     return response.status(200).json({ reply: aiMessage });
 
   } catch (error) {
