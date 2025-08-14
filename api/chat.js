@@ -1,48 +1,61 @@
+// Vercel'in sunucusuz fonksiyonları için standart başlangıç
 export default async function handler(request, response) {
-  // Sadece POST isteklerini kabul et
+  // Sadece POST metoduyla gelen istekleri kabul et
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // Frontend'den gelen soruyu al
+    // index.html'den gönderilen soruyu al
     const { prompt } = await request.body;
 
+    // Eğer soru boşsa hata döndür
     if (!prompt) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Vercel'in kasasından gizli API anahtarını al
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    // Vercel'in kasasından yeni Google AI (Gemini) anahtarını al
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    // Google Gemini API'sinin adresi
+    // Hızlı ve verimli 'flash' modelini kullanıyoruz
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
-    // DeepSeek API'ye istek gönder
-    const apiResponse = await fetch('https://api.deepseek.com/chat/completions', {
+    // Google'ın istediği formatta istek gövdesini oluştur
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Google Gemini API'ye isteği gönder
+    const apiResponse = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { content: 'You are a helpful assistant.', role: 'system' },
-          { content: prompt, role: 'user' },
-        ],
-        stream: false, // Cevabı tek parça halinde almak için
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    // Eğer Google'dan gelen cevapta bir hata varsa
     if (!apiResponse.ok) {
-      // API'den hata dönerse
       const errorData = await apiResponse.json();
-      console.error('DeepSeek API Error:', errorData);
-      return response.status(apiResponse.status).json({ error: 'Failed to get response from AI' });
+      console.error('Google AI API Error:', errorData);
+      return response.status(apiResponse.status).json({ error: 'Failed to get response from Google AI' });
     }
 
     const data = await apiResponse.json();
-    const aiMessage = data.choices[0].message.content;
+    
+    // Google'dan gelen cevabın içindeki metni al
+    const aiMessage = data.candidates[0].content.parts[0].text;
 
-    // Gelen cevabı frontend'e geri gönder
+    // Cevabı index.html'e geri gönder
     return response.status(200).json({ reply: aiMessage });
 
   } catch (error) {
