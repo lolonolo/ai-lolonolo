@@ -21,17 +21,10 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // 🔹 Buraya sabit cevap kontrolünü ekledik
-    if (prompt.toLowerCase().includes("lolonolo nedir")) {
-      return response.status(200).json({
-        status: 'success',
-        reply: "Lolonolo, öğrencilere açık kaynak sağlayan ücretsiz bir öğrenme yönetim sistemidir."
-      });
-    }
-
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
     
+    // ... Sistem talimatı ve requestBody (Bu kısımlar öncekiyle aynı, tam hallerini kendi dosyanızdan alın) ...
     const systemInstruction = `Sen Lolonolo AI Asistanısın...`; 
     const requestBody = { 
         contents: [
@@ -55,8 +48,11 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
+    // ... Link oluşturma mantığı aynı kalacak ...
     const regex = /\[Lokonolo Kaynak: (.*?)\]/g;
+    // ... (geri kalanı öncekiyle aynı)
 
+    // Başarılı cevap durumunda statü olarak 'success' gönderiyoruz.
     return response.status(200).json({ status: 'success', reply: aiMessage });
 
   } catch (error) {
