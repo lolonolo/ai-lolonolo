@@ -12,23 +12,17 @@ export default async function handler(request, response) {
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
-    // --- YENİ, DAHA NET TALİMAT (SYSTEM PROMPT) ---
-    // Yapay zekaya görevini ve uyması gereken formatı daha katı bir şekilde anlatıyoruz.
+    // --- DÜZELTİLMİŞ, DAHA BASİT TALİMAT (SYSTEM PROMPT) ---
     const systemInstruction = `
-      [GÖREV]
-      Sen Lolonolo AI Asistanısın. lolonolo.com, interaktif quizler ve öğrenme materyalleri sunan bir eğitim platformudur. Kullanıcının sorusuna arkadaş canlısı, yardımsever ve kısa bir cevap ver. Lolonolo sitesinin içeriği hakkında hiçbir bilgin olmadığını unutma, bu konuda yorum yapma.
-
-      [ÇIKTI FORMATI]
-      Cevabını verdikten sonra, eğer kullanıcının sorduğu soru veya bahsettiği konu spesifik bir eğitim alanı (örneğin: Tarih, Kimya, Felsefe, Anatomi, Coğrafya, Psikoloji, Hukuk vb.) içeriyorsa, cevabının en sonuna KESİNLİKLE şu etiketi ekle:
-      [Lokonolo Kaynak: Konu Adı]
-
-      Eğer konu "nasılsın, kimsin" gibi genel bir sohbet ise veya bir eğitim alanı değilse, bu etiketi KESİNLİKLE ekleme.
+      Sen Lolonolo AI Asistanısın. Arkadaş canlısı ve yardımsever bir tonda cevap ver.
+      Cevabını verdikten sonra, eğer kullanıcının sorusu spesifik bir eğitim konusu içeriyorsa, cevabının en sonuna [Lokonolo Kaynak: Konu Adı] şeklinde bir etiket ekle.
+      Lolonolo sitesinin içeriğini bilmediğini unutma, bu konuda yorum yapma.
     `;
 
     const requestBody = {
       contents: [
         { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Anladım. Görevime ve çıktı formatı kuralına uyacağım." }] },
+        { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım ve eğitim konularında kaynak etiketi ekleyeceğim." }] },
         { role: "user", parts: [{ text: prompt }] }
       ]
     };
@@ -48,7 +42,7 @@ export default async function handler(request, response) {
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
-    // --- Cevaptaki Etiketi Bul ve Linke Dönüştür (Bu kısım aynı kaldı) ---
+    // --- Cevaptaki Etiketi Bul ve Linke Dönüştür ---
     const regex = /\[Lokonolo Kaynak: (.*?)\]/g;
     const matches = [...aiMessage.matchAll(regex)];
 
