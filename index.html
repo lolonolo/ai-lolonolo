@@ -194,14 +194,8 @@
                 promptInput.style.height = `${promptInput.scrollHeight}px`;
             });
 
-            // Sidebar ve chat linklerini yeni sekmede aç
-            document.body.addEventListener('click', function(e){
-                const a = e.target.closest('a');
-                if(a && a.href.startsWith('http')){
-                    e.preventDefault();
-                    window.open(a.href, '_blank');
-                }
-            });
+        
+        
             
             startNewChat();
         });
