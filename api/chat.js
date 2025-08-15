@@ -49,7 +49,7 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
     // ... Link oluşturma mantığı aynı kalacak ...
-    const regex = /\[Lokonolo Kaynak: (.*?)\]/g;
+    const regex = /\[Lolonolo Kaynak: (.*?)\]/g;
     // ... (geri kalanı öncekiyle aynı)
 
     // Başarılı cevap durumunda statü olarak 'success' gönderiyoruz.
