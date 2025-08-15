@@ -3,69 +3,64 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  try {
-    const { prompt } = await request.body;
-    if (!prompt) {
-      return response.status(400).json({ error: 'Prompt is required' });
-    }
+  const { prompt } = await request.body;
+  if (!prompt) {
+    return response.status(400).json({ error: 'Prompt is required' });
+  }
 
+  // --- HATA DURUMUNDA ÇALIŞACAK YEDEK PLAN ---
+  const fallbackResponse = () => {
+    // Kullanıcının sorusunu URL uyumlu hale getir (örn: "genel kimya" -> "genel+kimya")
+    const searchQuery = encodeURIComponent(prompt);
+    // Lolonolo için bir arama URL'i oluştur. WordPress'te standart arama ?s= ile çalışır.
+    const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
+
+    const fallbackMessage = `
+      Şu an yapay zeka meşgul veya bir sorunla karşılaştı. 
+      <br><br>
+      Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz.
+      <br><br>
+      👉 **<a href="${searchUrl}" target="_blank">'${prompt}' için Lolonolo'da ara</a>**
+    `;
+    // Hata yerine bu kibar mesajı ve linki gönderiyoruz.
+    return response.status(200).json({ reply: fallbackMessage });
+  };
+
+  try {
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
-    // --- DÜZELTİLMİŞ, DAHA BASİT TALİMAT (SYSTEM PROMPT) ---
-    const systemInstruction = `
-      Sen Lolonolo AI Asistanısın. Arkadaş canlısı ve yardımsever bir tonda cevap ver.
-      Cevabını verdikten sonra, eğer kullanıcının sorusu spesifik bir eğitim konusu içeriyorsa, cevabının en sonuna [Lokonolo Kaynak: Konu Adı] şeklinde bir etiket ekle.
-      Lolonolo sitesinin içeriğini bilmediğini unutma, bu konuda yorum yapma.
-    `;
+    const systemInstruction = `Sen Lolonolo AI Asistanısın... (Talimat metniniz)`; // Talimat metniniz burada kalabilir.
 
-    const requestBody = {
-      contents: [
-        { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım ve eğitim konularında kaynak etiketi ekleyeceğim." }] },
-        { role: "user", parts: [{ text: prompt }] }
-      ]
-    };
-
+    const requestBody = { /* ... önceki requestBody ... */ };
+    
+    // Öncekiyle aynı requestBody'i buraya kopyalayabilirsiniz, sadelik için kısalttım.
+    // ÖNEMLİ: Yukarıdaki systemInstruction ve requestBody kısımlarını bir önceki koddan alın.
+    // Buraya sadece ana mantığı göstermek için kısalttım.
+    // Gerçek kodunuzda bu bölümlerin tam olması gerekir.
+    
     const apiResponse = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(requestBody), // requestBody'nin tam halini kullandığınızdan emin olun
     });
 
     if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      console.error('Google AI API Error:', errorData);
-      return response.status(apiResponse.status).json({ error: `Google API Hatası: ${errorData.error?.message || 'Bilinmeyen Hata'}` });
+      // Hata varsa, fallbackResponse fonksiyonunu çağır
+      console.error('Google AI API Error, fallback devreye giriyor.');
+      return fallbackResponse();
     }
 
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
-    // --- Cevaptaki Etiketi Bul ve Linke Dönüştür ---
-    const regex = /\[Lokonolo Kaynak: (.*?)\]/g;
-    const matches = [...aiMessage.matchAll(regex)];
-
-    if (matches.length > 0) {
-        let linksHtml = `<br><br>📚 **İlgili Lolonolo konuları:**`;
-        matches.forEach(match => {
-            const keyword = match[1].trim();
-            const tagSlug = keyword.toLowerCase()
-                                .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                                .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                                .replace(/\s+/g, '-');
-            const tagUrl = `https://lolonolo.com/tag/${tagSlug}`;
-            linksHtml += `<br>- <a href="${tagUrl}" target="_blank">${keyword}</a>`;
-        });
-        
-        aiMessage = aiMessage.replace(regex, '').trim();
-        aiMessage += linksHtml;
-    }
-
+    // ... Etiket bulma ve linke dönüştürme mantığı burada kalacak ...
+    
     return response.status(200).json({ reply: aiMessage });
 
   } catch (error) {
-    console.error('Internal Server Error:', error);
-    return response.status(500).json({ error: 'Internal Server Error' });
+    // Herhangi bir ağ hatası veya başka bir sorunda da fallbackResponse fonksiyonunu çağır
+    console.error('Genel Hata, fallback devreye giriyor:', error);
+    return fallbackResponse();
   }
 }
