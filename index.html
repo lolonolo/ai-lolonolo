@@ -102,129 +102,150 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const chatWindow = document.getElementById('chat-window');
-            const promptInput = document.getElementById('prompt-input');
-            const askButton = document.getElementById('ask-button');
-            const newChatBtn = document.getElementById('new-chat-btn');
-            let inFallbackMode = false;
+    const chatWindow = document.getElementById('chat-window');
+    const promptInput = document.getElementById('prompt-input');
+    const askButton = document.getElementById('ask-button');
+    const newChatBtn = document.getElementById('new-chat-btn');
 
-            const addMessage = (htmlContent, sender) => {
-                const wrapper = document.createElement('div');
-                wrapper.classList.add('message-wrapper', sender);
-                if (sender === 'assistant') {
-                    const avatar = document.createElement('div');
-                    avatar.classList.add('avatar');
-                    avatar.textContent = 'LN';
-                    wrapper.appendChild(avatar);
-                }
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message');
-                messageElement.innerHTML = htmlContent;
-                wrapper.appendChild(messageElement);
-                chatWindow.appendChild(wrapper);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-                return messageElement;
-            };
+    let inFallbackMode = false;
+    // YENİ: Mevcut sohbetin mesajlarını tutacak olan değişkenimiz
+    let currentChat = [];
 
-            const sendMessage = async () => {
-                const prompt = promptInput.value.trim();
-                if (!prompt) return;
-                addMessage(prompt, 'user');
-                promptInput.value = '';
-                promptInput.style.height = 'auto';
-                askButton.disabled = true;
-
-                if (inFallbackMode) {
-                    const searchQuery = encodeURIComponent(prompt);
-                    const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
-                    const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
-                    addMessage(searchMessage, 'assistant');
-                    inFallbackMode = false;
-                    askButton.disabled = false;
-                    promptInput.focus();
-                    promptInput.placeholder = 'Bir mesaj yaz...';
-                    return;
-                }
-
-                const responseElement = addMessage('...', 'assistant');
-                try {
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt: prompt }),
-                    });
-                    if (!response.ok) throw new Error('Network response was not ok.');
-                    const data = await response.json();
-                    if (data.status === 'fallback_initiated') {
-                        inFallbackMode = true;
-                        promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                    }
-                    responseElement.innerHTML = data.reply;
-                } catch (error) {
-                    inFallbackMode = true;
-                    promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                    responseElement.innerHTML = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
-                } finally {
-                    askButton.disabled = false;
-                    promptInput.focus();
-                }
-            };
-
-            const startNewChat = () => {
-                 chatWindow.innerHTML = '';
-                 addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
-                 inFallbackMode = false;
-                 promptInput.placeholder = 'Bir mesaj yaz...';
-            }
-
-            newChatBtn.addEventListener('click', startNewChat);
-            askButton.addEventListener('click', sendMessage);
-            promptInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    sendMessage();
-                }
-            });
-            promptInput.addEventListener('input', () => {
-                promptInput.style.height = 'auto';
-                promptInput.style.height = `${promptInput.scrollHeight}px`;
-            });
-            
-            startNewChat();
-        });
-    </script>
+    // --- YENİ FONKSİYONLAR: HAFIZA YÖNETİMİ ---
     
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        if (typeof ezstandalone !== 'undefined') {
-            ezstandalone.cmd.push(function() {
-                ezstandalone.enable();
-                ezstandalone.display();
+    // Mevcut sohbeti tarayıcının hafızasına kaydeder
+    const saveCurrentChat = () => {
+        // 'currentChat' dizisini metne (JSON formatında) dönüştürüp kaydediyoruz
+        localStorage.setItem('currentChat', JSON.stringify(currentChat));
+    };
+
+    // Sayfa yüklendiğinde kayıtlı sohbeti hafızadan yükler
+    const loadChatFromStorage = () => {
+        const savedChat = localStorage.getItem('currentChat');
+        if (savedChat) {
+            currentChat = JSON.parse(savedChat);
+            // Hafızadaki mesajları ekrana yeniden çiz
+            chatWindow.innerHTML = '';
+            currentChat.forEach(message => {
+                addMessage(message.text, message.sender, false); // 'false' yeniden çizim olduğunu belirtir
             });
+        } else {
+            // Hafızada bir şey yoksa, yeni bir başlangıç mesajı göster
+            startNewChat();
+        }
+    };
+
+    // --- GÜNCELLENEN FONKSİYONLAR ---
+
+    const addMessage = (htmlContent, sender, save = true) => {
+        // YENİ: Eğer bu kaydedilmesi gereken yeni bir mesajsa...
+        if (save) {
+            // Mesajı hem ekrana çizmek hem de hafıza dizimize eklemek için
+            currentChat.push({ sender: sender, text: htmlContent });
         }
 
-        setTimeout(function() {
-          var fcScript = document.createElement('script');
-          fcScript.src = "https://fundingchoicesmessages.google.com/i/pub-6517205438926212?ers=1";
-          fcScript.async = true;
-          document.head.appendChild(fcScript);
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('message-wrapper', sender);
+        if (sender === 'assistant') {
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            avatar.textContent = 'LN';
+            wrapper.appendChild(avatar);
+        }
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.innerHTML = htmlContent;
+        wrapper.appendChild(messageElement);
+        chatWindow.appendChild(wrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return messageElement;
+    };
 
-          function signalGooglefcPresent() {
-            if (!window.frames['googlefcPresent']) {
-              if (document.body) {
-                const iframe = document.createElement('iframe');
-                iframe.name = 'googlefcPresent';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-              } else {
-                setTimeout(signalGooglefcPresent, 0);
-              }
+    const sendMessage = async () => {
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+
+        addMessage(prompt, 'user');
+        saveCurrentChat(); // Kullanıcının mesajını kaydet
+
+        promptInput.value = '';
+        promptInput.style.height = 'auto';
+        askButton.disabled = true;
+
+        if (inFallbackMode) {
+            const searchQuery = encodeURIComponent(prompt);
+            const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
+            const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
+            
+            addMessage(searchMessage, 'assistant');
+            saveCurrentChat(); // Arama mesajını da kaydet
+            
+            inFallbackMode = false;
+            askButton.disabled = false;
+            promptInput.focus();
+            promptInput.placeholder = 'Bir mesaj yaz...';
+            return;
+        }
+
+        const responseElement = addMessage('...', 'assistant');
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt }),
+            });
+            if (!response.ok) throw new Error('Network response was not ok.');
+            const data = await response.json();
+
+            if (data.status === 'fallback_initiated') {
+                inFallbackMode = true;
+                promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
             }
-          }
-          signalGooglefcPresent();
-        }, 5000);
+            
+            responseElement.innerHTML = data.reply;
+            // Son gelen AI mesajını, '...' yerine gerçek içerikle güncelle
+            currentChat[currentChat.length - 1].text = data.reply;
+            saveCurrentChat(); // AI'ın son cevabını kaydet
+
+        } catch (error) {
+            const errorMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
+            responseElement.innerHTML = errorMessage;
+            currentChat[currentChat.length - 1].text = errorMessage;
+            saveCurrentChat(); // Hata mesajını kaydet
+            inFallbackMode = true;
+            promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
+        } finally {
+            askButton.disabled = false;
+            promptInput.focus();
+        }
+    };
+
+    const startNewChat = () => {
+         chatWindow.innerHTML = '';
+         currentChat = []; // Hafıza dizisini temizle
+         addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+         saveCurrentChat(); // Başlangıç mesajını da kaydet
+         inFallbackMode = false;
+         promptInput.placeholder = 'Bir mesaj yaz...';
+    }
+
+    // Olay Dinleyicileri (Event Listeners)
+    newChatBtn.addEventListener('click', startNewChat);
+    askButton.addEventListener('click', sendMessage);
+    promptInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
     });
-    </script>
+    promptInput.addEventListener('input', () => {
+        promptInput.style.height = 'auto';
+        promptInput.style.height = `${promptInput.scrollHeight}px`;
+    });
+    
+    // --- YENİ: SAYFA İLK YÜKLENDİĞİNDE BU FONKSİYONU ÇAĞIR ---
+    loadChatFromStorage();
+</script>
 </body>
 </html>
