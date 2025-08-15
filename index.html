@@ -25,17 +25,18 @@
     <script>
         // Bizim kodumuz, sayfanın en temel "load" olayını bekleyecek.
         // Bu, Ezoic dahil her şeyin yüklenmesi için zaman tanır.
-        window.addEventListener("load", function() {
-            try {
-                const chatWindow = document.getElementById('chat-window');
-                const promptInput = document.getElementById('prompt-input');
-                const askButton = document.getElementById('ask-button');
-                const newChatBtn = document.getElementById('new-chat-btn');
+       window.addEventListener("load", function() {
+    setTimeout(function() {
+        try {
+            const chatWindow = document.getElementById('chat-window');
+            const promptInput = document.getElementById('prompt-input');
+            const askButton = document.getElementById('ask-button');
+            const newChatBtn = document.getElementById('new-chat-btn');
 
-                if (!chatWindow || !promptInput || !askButton || !newChatBtn) {
-                    console.error("Sohbet arayüzü elementleri bulunamadı. Ezoic muhtemelen HTML yapısını değiştirdi.");
-                    return;
-                }
+            if (!chatWindow || !promptInput || !askButton || !newChatBtn) {
+                console.error("Sohbet arayüzü elementleri bulunamadı. Ezoic muhtemelen HTML yapısını değiştirdi.");
+                return;
+            }
 
                 let inFallbackMode = false;
                 
@@ -127,10 +128,11 @@
                 
                 startNewChat();
 
-            } catch(e) {
-                console.error("Sohbet uygulaması başlatılamadı:", e);
-            }
-        });
+             } catch(e) {
+            console.error("Sohbet uygulaması başlatılamadı:", e);
+        }
+    }, 1000); // 1 saniye bekler. Bu süreyi duruma göre artırabilirsiniz.
+});
     </script>
     
     <script>
