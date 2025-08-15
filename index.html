@@ -6,133 +6,183 @@
     <title>Lolonolo AI Asistan</title>
 
     <script>
+        // ezstandalone objesini başlat
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
     </script>
+    <script src="https://the.gatekeeperconsent.com/cmp.min.js" async></script>
+    <script src="https://the.gatekeeperconsent.com/ccpa/v2/standalone.js" async></script>
     <script src="//www.ezojs.com/ezoic/sa.min.js" async></script>
     <style>
-        /* TÜM CSS STİLLERİ OLDUĞU GİBİ KALIYOR */
         :root {
-            --background-color: #F8F9FA; /* ... */
+            --background-color: #F8F9FA; --container-bg: #FFFFFF; --sidebar-bg: #ECEFF1;
+            --primary-text: #202124; --secondary-text: #5F6368; --accent-color: #1A73E8;
+            --accent-hover: #1765CC; --border-color: #DADCE0; --user-bubble-bg: #D3E3FD;
+            --assistant-bubble-bg: #F1F3F4;
         }
-        /* ... */
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--primary-text); }
+        .main-container { display: flex; height: 100vh; }
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); padding: 15px; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); }
+        .new-chat-btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 12px; margin-bottom: 20px; font-size: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; background-color: var(--container-bg); color: var(--primary-text); transition: background-color 0.2s; }
+        .new-chat-btn:hover { background-color: #f1f1f1; }
+        .chat-history { flex-grow: 1; overflow-y: auto; }
+        .chat-history h3 { font-size: 0.9rem; color: var(--secondary-text); margin: 0 0 10px 0; padding: 0 10px; }
+        .chat-history ul { list-style: none; padding: 0; margin: 0; }
+        .no-history { text-align: center; color: var(--secondary-text); font-size: 0.9rem; padding: 20px; }
+        .sidebar-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-color); text-align: center; }
+        .footer-link { display: block; text-decoration: none; color: var(--secondary-text); font-size: 0.85rem; padding: 8px 0; border-radius: 6px; transition: background-color 0.2s, color 0.2s; }
+        .footer-link:hover { background-color: #e0e0e0; color: var(--primary-text); }
+        .premium-link { font-weight: bold; color: var(--accent-color); margin-bottom: 10px; }
+        .social-icons { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; }
+        .social-icons a { color: var(--secondary-text); transition: color 0.2s; }
+        .social-icons a:hover { color: var(--primary-text); }
+        .social-icons svg { width: 22px; height: 22px; }
+        .chat-view { flex-grow: 1; display: flex; flex-direction: column; background-color: var(--container-bg); }
+        .chat-window { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        .message-wrapper { display: flex; margin-bottom: 20px; align-items: flex-end; }
+        .avatar { width: 40px; height: 40px; border-radius: 10px; background-color: #FF4500; color: #FFD700; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); margin-right: 12px; flex-shrink: 0; }
+        .message { max-width: 80%; padding: 12px 18px; border-radius: 18px; line-height: 1.5; word-wrap: break-word; }
+        .user { justify-content: flex-end; }
+        .assistant { justify-content: flex-start; }
+        .user .message { background-color: var(--user-bubble-bg); color: var(--primary-text); border-bottom-right-radius: 4px; }
+        .assistant .message { background-color: var(--assistant-bubble-bg); color: var(--primary-text); border-bottom-left-radius: 4px; white-space: pre-wrap; }
+        .assistant .message a { color: var(--accent-color); font-weight: bold; text-decoration: none; }
+        .assistant .message a:hover { text-decoration: underline; }
+        .input-area-wrapper { padding: 1.5rem; border-top: 1px solid var(--border-color); }
+        .input-area { display: flex; max-width: 700px; margin: 0 auto; background-color: var(--assistant-bubble-bg); border-radius: 24px; padding: 5px; }
+        textarea { flex-grow: 1; border: none; background: transparent; padding: 10px; font-size: 1rem; resize: none; overflow-y: hidden; max-height: 150px; outline: none; }
+        button { padding: 10px 15px; margin: 3px; font-size: 1rem; color: white; background-color: var(--accent-color); border: none; border-radius: 18px; cursor: pointer; transition: background-color 0.2s; }
+        button:hover:not(:disabled) { background-color: var(--accent-hover); }
+        button:disabled { background-color: #90baf9; cursor: not-allowed; }
+        @media (max-width: 768px) { .sidebar { display: none; } }
     </style>
 </head>
 <body>
     <div class="main-container">
+        <div class="sidebar">
+            <button class="new-chat-btn" id="new-chat-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                New Chat
+            </button>
+            <div class="chat-history">
+                <h3>Geçmiş Sohbetler</h3>
+                <ul id="history-list"></ul>
+                <div class="no-history">Henüz sohbet geçmişiniz yok.</div>
+            </div>
+            <div class="sidebar-footer">
+                <a href="https://shopier.com/lolonolo" target="_blank" class="footer-link premium-link">⭐ Premium Üyelik Al</a>
+                <div class="social-icons">
+                    <a href="#" target="_blank" title="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg></a>
+                    <a href="#" target="_blank" title="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.85s-.012 3.584-.07 4.85c-.148 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07s-3.584-.012-4.85-.07c-3.252-.148-4.771-1.691-4.919-4.919-.058-1.265-.069-1.645-.069-4.85s.012-3.584.07-4.85c.148-3.225 1.664-4.771 4.919 4.919C8.416 2.175 8.796 2.163 12 2.163zm0 1.441c-3.119 0-3.483.011-4.706.067-2.612.119-3.997 1.503-4.116 4.116-.056 1.223-.067 1.587-.067 4.706s.011 3.483.067 4.706c.119 2.613 1.504 3.997 4.116 4.116 1.223.056 1.587.067 4.706.067s3.483-.011 4.706-.067c2.613-.119 3.997-1.504 4.116-4.116.056-1.223.067-1.587.067-4.706s-.011-3.483-.067-4.706c-.119-2.612-1.503-3.997-4.116-4.116C15.483 3.614 15.119 3.604 12 3.604zm0 4.238c-2.404 0-4.352 1.948-4.352 4.352s1.948 4.352 4.352 4.352 4.352-1.948 4.352-4.352-1.948-4.352-4.352-4.352zm0 7.262c-1.601 0-2.91-1.308-2.91-2.91s1.309-2.91 2.91-2.91 2.91 1.308 2.91 2.91-1.309 2.91-2.91 2.91zm4.434-7.562c-.596 0-1.079.483-1.079 1.079s.483 1.079 1.079 1.079 1.079-.483 1.079-1.079-.483-1.079-1.079-1.079z"></path></svg></a>
+                    <a href="#" target="_blank" title="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c-5.405 0-9.782 4.378-9.782 9.782s4.377 9.782 9.782 9.782 9.782-4.378 9.782-9.782S17.405 2.163 12 2.163zm5.402 10.597l-6.84 3.948c-.63.364-1.42-.143-1.42-.894V8.135c0-.751.79-1.258 1.42-.894l6.84 3.948c.63.364.63.953 0 1.317z"></path></svg></a>
+                </div>
+                <a href="mailto:lolonolo@lolonolo.com" class="footer-link">lolonolo@lolonolo.com</a>
+            </div>
         </div>
+        <div class="chat-view">
+            <div class="chat-window" id="chat-window"></div>
+            <div class="input-area-wrapper">
+                <div class="input-area">
+                    <textarea id="prompt-input" placeholder="Bir mesaj yaz..." rows="1"></textarea>
+                    <button id="ask-button">Gönder</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Bizim kodumuz, sayfanın en temel "load" olayını bekleyecek.
-        // Bu, Ezoic dahil her şeyin yüklenmesi için zaman tanır.
-       window.addEventListener("load", function() {
-    setTimeout(function() {
-        try {
+        document.addEventListener("DOMContentLoaded", function() {
             const chatWindow = document.getElementById('chat-window');
             const promptInput = document.getElementById('prompt-input');
             const askButton = document.getElementById('ask-button');
             const newChatBtn = document.getElementById('new-chat-btn');
+            let inFallbackMode = false;
 
-            if (!chatWindow || !promptInput || !askButton || !newChatBtn) {
-                console.error("Sohbet arayüzü elementleri bulunamadı. Ezoic muhtemelen HTML yapısını değiştirdi.");
-                return;
-            }
+            const addMessage = (htmlContent, sender) => {
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('message-wrapper', sender);
+                if (sender === 'assistant') {
+                    const avatar = document.createElement('div');
+                    avatar.classList.add('avatar');
+                    avatar.textContent = 'LN';
+                    wrapper.appendChild(avatar);
+                }
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.innerHTML = htmlContent;
+                wrapper.appendChild(messageElement);
+                chatWindow.appendChild(wrapper);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                return messageElement;
+            };
 
-                let inFallbackMode = false;
-                
-                // ... Geri kalan tüm JavaScript fonksiyonlarınız (addMessage, sendMessage, startNewChat)
-                // olduğu gibi buraya gelecek. Hiçbir değişiklik yok.
-                // Sadece en dışına window.addEventListener("load", ...) sarmalayıcısı ekledik.
+            const sendMessage = async () => {
+                const prompt = promptInput.value.trim();
+                if (!prompt) return;
+                addMessage(prompt, 'user');
+                promptInput.value = '';
+                promptInput.style.height = 'auto';
+                askButton.disabled = true;
 
-                const addMessage = (htmlContent, sender) => {
-                    const wrapper = document.createElement('div');
-                    wrapper.classList.add('message-wrapper', sender);
-                    if (sender === 'assistant') {
-                        const avatar = document.createElement('div');
-                        avatar.classList.add('avatar');
-                        avatar.textContent = 'LN';
-                        wrapper.appendChild(avatar);
-                    }
-                    const messageElement = document.createElement('div');
-                    messageElement.classList.add('message');
-                    messageElement.innerHTML = htmlContent;
-                    wrapper.appendChild(messageElement);
-                    chatWindow.appendChild(wrapper);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                    return messageElement;
-                };
-
-                const sendMessage = async () => {
-                    const prompt = promptInput.value.trim();
-                    if (!prompt) return;
-                    addMessage(prompt, 'user');
-                    promptInput.value = '';
-                    promptInput.style.height = 'auto';
-                    askButton.disabled = true;
-
-                    if (inFallbackMode) {
-                        const searchQuery = encodeURIComponent(prompt);
-                        const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
-                        const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
-                        addMessage(searchMessage, 'assistant');
-                        inFallbackMode = false;
-                        askButton.disabled = false;
-                        promptInput.focus();
-                        promptInput.placeholder = 'Bir mesaj yaz...';
-                        return;
-                    }
-
-                    const responseElement = addMessage('...', 'assistant');
-                    try {
-                        const response = await fetch('/api/chat', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: prompt }),
-                        });
-                        if (!response.ok) throw new Error('Network response was not ok.');
-                        const data = await response.json();
-                        if (data.status === 'fallback_initiated') {
-                            inFallbackMode = true;
-                            promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                        }
-                        responseElement.innerHTML = data.reply;
-                    } catch (error) {
-                        inFallbackMode = true;
-                        promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                        responseElement.innerHTML = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
-                    } finally {
-                        askButton.disabled = false;
-                        promptInput.focus();
-                    }
-                };
-
-                const startNewChat = () => {
-                     chatWindow.innerHTML = '';
-                     addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
-                     inFallbackMode = false;
-                     promptInput.placeholder = 'Bir mesaj yaz...';
+                if (inFallbackMode) {
+                    const searchQuery = encodeURIComponent(prompt);
+                    const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
+                    const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
+                    addMessage(searchMessage, 'assistant');
+                    inFallbackMode = false;
+                    askButton.disabled = false;
+                    promptInput.focus();
+                    promptInput.placeholder = 'Bir mesaj yaz...';
+                    return;
                 }
 
-                newChatBtn.addEventListener('click', startNewChat);
-                askButton.addEventListener('click', sendMessage);
-                promptInput.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        sendMessage();
+                const responseElement = addMessage('...', 'assistant');
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: prompt }),
+                    });
+                    if (!response.ok) throw new Error('Network response was not ok.');
+                    const data = await response.json();
+                    if (data.status === 'fallback_initiated') {
+                        inFallbackMode = true;
+                        promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
                     }
-                });
-                promptInput.addEventListener('input', () => {
-                    promptInput.style.height = 'auto';
-                    promptInput.style.height = `${promptInput.scrollHeight}px`;
-                });
-                
-                startNewChat();
+                    responseElement.innerHTML = data.reply;
+                } catch (error) {
+                    inFallbackMode = true;
+                    promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
+                    responseElement.innerHTML = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
+                } finally {
+                    askButton.disabled = false;
+                    promptInput.focus();
+                }
+            };
 
-             } catch(e) {
-            console.error("Sohbet uygulaması başlatılamadı:", e);
-        }
-    }, 1000); // 1 saniye bekler. Bu süreyi duruma göre artırabilirsiniz.
-});
+            const startNewChat = () => {
+                 chatWindow.innerHTML = '';
+                 addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+                 inFallbackMode = false;
+                 promptInput.placeholder = 'Bir mesaj yaz...';
+            }
+
+            newChatBtn.addEventListener('click', startNewChat);
+            askButton.addEventListener('click', sendMessage);
+            promptInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+            promptInput.addEventListener('input', () => {
+                promptInput.style.height = 'auto';
+                promptInput.style.height = `${promptInput.scrollHeight}px`;
+            });
+            
+            startNewChat();
+        });
     </script>
     
     <script>
@@ -143,8 +193,27 @@
                 ezstandalone.display();
             });
         }
-        // Google Funding Choices Script'i buradan kaldırıp, Ezoic'in kendi sistemine bırakmak daha iyi olabilir.
-        // Ama şimdilik test için kalabilir.
+
+        setTimeout(function() {
+          var fcScript = document.createElement('script');
+          fcScript.src = "https://fundingchoicesmessages.google.com/i/pub-6517205438926212?ers=1";
+          fcScript.async = true;
+          document.head.appendChild(fcScript);
+
+          function signalGooglefcPresent() {
+            if (!window.frames['googlefcPresent']) {
+              if (document.body) {
+                const iframe = document.createElement('iframe');
+                iframe.name = 'googlefcPresent';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+              } else {
+                setTimeout(signalGooglefcPresent, 0);
+              }
+            }
+          }
+          signalGooglefcPresent();
+        }, 5000);
     });
     </script>
 </body>
