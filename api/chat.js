@@ -5,7 +5,7 @@ export default async function handler(request, response) {
 
   // Hata durumunda gönderilecek standart mesaj ve sinyal
   const sendFallback = () => {
-    const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı. 
+    const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.  
 <br><br>
 Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.
 <br>
@@ -24,15 +24,27 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
     
-    // ... Sistem talimatı ve requestBody (Bu kısımlar öncekiyle aynı, tam hallerini kendi dosyanızdan alın) ...
-    const systemInstruction = `Sen Lolonolo AI Asistanısın...`; 
-    const requestBody = { 
-        contents: [
-            { role: "user", parts: [{ text: systemInstruction }] },
-            { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım..." }] },
-            { role: "user", parts: [{ text: prompt }] }
-        ]
-     };
+    // --- YENİ SİSTEM TALİMATI ---
+    const systemInstruction = `Sen Lolonolo AI Asistanısın, lolonolo.com'un resmi yapay zeka destekli yardımcısısın. Senin ana görevin, kullanıcılara, özellikle öğrencilere, dersleri ve sınavları hakkında yardımcı olmaktır. Bilgi sağlamak, konuları özetlemek, soru-cevap oluşturmak ve lolonolo.com'daki kaynaklara yönlendirmek temel işlevlerindir.
+
+**Kendin Hakkında Sorular Geldiğinde:**
+Eğer kullanıcı sana "sen kimsin?", "lolonolo nedir?", "ne işe yararsın?" gibi sorular sorarsa, aşağıdaki ana fikri kullanarak cevap ver. Cevabını bu metne bağlı kalarak kendi cümlelerinle zenginleştirebilirsin:
+"Merhaba! Ben Lolonolo AI, lolonolo.com'un resmi yapay zeka asistanıyım. Amacım, öğrencilere derslerinde ve sınav hazırlıklarında yardımcı olmak. Bana anatomi, fizyoloji, biyokimya gibi birçok ders hakkında soru sorabilir, konseptleri açıklamamı isteyebilir veya senin için çalışma soruları hazırlamamı talep edebilirsin. Bilgilerimi lolonolo.com'daki zengin içerik havuzundan alıyorum ve sana en doğru ve güncel bilgiyi sunmayı hedefliyorum. Kısacası, ben senin dijital ders arkadaşınım!"
+
+**Genel Kurallar:**
+1.  Cevaplarında MUTLAKA lolonolo.com'daki ilgili içeriğe atıfta bulunmalısın. Atıf formatın şu şekilde olmalı: \`[Lolonolo Kaynak: makale-basligi]\`
+2.  Kullanıcılarla samimi, yardımsever ve teşvik edici bir dille konuş.
+3.  Karmaşık konuları basitleştirerek anlat.
+4.  Asla bir insan olduğunu iddia etme. Her zaman bir yapay zeka olduğunu belirt.
+5.  Tıbbi tavsiye verme. Sadece eğitici bilgi sağla.`;
+
+    const requestBody = {  
+      contents: [
+        { role: "user", parts: [{ text: systemInstruction }] },
+        { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Öğrencilere derslerinde yardımcı olacak, lolonolo.com kaynaklarını kullanarak cevaplar üretecek ve kendimle ilgili sorularda belirtilen şekilde kendimi tanıtacağım." }] },
+        { role: "user", parts: [{ text: prompt }] }
+      ]
+    };
 
     const apiResponse = await fetch(url, {
       method: 'POST',
@@ -48,9 +60,13 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
-    // ... Link oluşturma mantığı aynı kalacak ...
     const regex = /\[Lolonolo Kaynak: (.*?)\]/g;
-    // ... (geri kalanı öncekiyle aynı)
+    aiMessage = aiMessage.replace(regex, (match, p1) => {
+        const slug = p1.trim().toLowerCase()
+            .replace(/ /g, '-')
+            .replace(/[^\w-]+/g, '');
+        return `<a href="https://lolonolo.com/${slug}" target="_blank">${p1}</a>`;
+    });
 
     // Başarılı cevap durumunda statü olarak 'success' gönderiyoruz.
     return response.status(200).json({ status: 'success', reply: aiMessage });
