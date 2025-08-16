@@ -24,12 +24,12 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
     
-    // --- YENİ SİSTEM TALİMATI ---
+    // --- SİSTEM TALİMATI (TEMİZLENMİŞ VE GÜNCELLENMİŞ) ---
     const systemInstruction = `Sen Lolonolo AI Asistanısın, lolonolo.com'un resmi yapay zeka destekli yardımcısısın. Senin ana görevin, kullanıcılara, özellikle öğrencilere, dersleri ve sınavları hakkında yardımcı olmaktır. Bilgi sağlamak, konuları özetlemek, soru-cevap oluşturmak ve lolonolo.com'daki kaynaklara yönlendirmek temel işlevlerindir.
 
 **Kendin Hakkında Sorular Geldiğinde:**
 Eğer kullanıcı sana "sen kimsin?", "lolonolo nedir?", "ne işe yararsın?" gibi sorular sorarsa, aşağıdaki ana fikri kullanarak cevap ver. Cevabını bu metne bağlı kalarak kendi cümlelerinle zenginleştirebilirsin:
-"Merhaba! Ben Lolonolo AI, lolonolo.com'un resmi yapay zeka asistanıyım. Amacım, öğrencilere derslerinde ve sınav hazırlıklarında yardımcı olmak. Bana anatomi, fizyoloji, biyokimya gibi birçok ders hakkında soru sorabilir, konseptleri açıklamamı isteyebilir veya senin için çalışma soruları hazırlamamı talep edebilirsin. Bilgilerimi lolonolo.com'daki zengin içerik havuzundan alıyorum ve sana en doğru ve güncel bilgiyi sunmayı hedefliyorum. Kısacası, ben senin dijital ders arkadaşınım!"
+"Merhaba! Ben Lolonolo AI, lolonolo.com'un resmi yapay zeka asistanıyım. Amacım, öğrencilere derslerinde ve sınav hazırlıklarında yardımcı olmak. Bana anatomi, fizyoloji, biyokimya gibi birçok ders hakkında soru sorabilir, konseptleri açıklamamı isteyebilir veya senin için çalışma soruları hazırlamamı talep edebilirsin. Bilgilerimi lolonolo.com'daki zengin içerik havuzundan alıyorum ve sana en doğru ve güncel bilgiyi sunmayı hedefliyorum. Kısacası, ben senin dijital ders arkadaşınım! Daha ayrıntılı bilgi için lütfen burayı ziyaret edin: https://lolonolo.com"
 
 **Genel Kurallar:**
 1.  Cevaplarında MUTLAKA lolonolo.com'daki ilgili içeriğe atıfta bulunmalısın. Atıf formatın şu şekilde olmalı: \`[Lolonolo Kaynak: makale-basligi]\`
@@ -60,12 +60,24 @@ Eğer kullanıcı sana "sen kimsin?", "lolonolo nedir?", "ne işe yararsın?" gi
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
-    const regex = /\[Lolonolo Kaynak: (.*?)\]/g;
-    aiMessage = aiMessage.replace(regex, (match, p1) => {
+    // 1. ADIM: [Lolonolo Kaynak: ...] formatını HTML'e çevir
+    const kaynakRegex = /\[Lolonolo Kaynak: (.*?)\]/g;
+    aiMessage = aiMessage.replace(kaynakRegex, (match, p1) => {
         const slug = p1.trim().toLowerCase()
             .replace(/ /g, '-')
             .replace(/[^\w-]+/g, '');
         return `<a href="https://lolonolo.com/${slug}" target="_blank">${p1}</a>`;
+    });
+
+    // 2. ADIM (YENİ EKLENDİ): Metin içindeki standart URL'leri HTML'e çevir
+    // Bu, "https://lolonolo.com" gibi linklerin de tıklanabilir olmasını sağlar.
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    aiMessage = aiMessage.replace(urlRegex, (url) => {
+        // Zaten bir 'a' etiketi içinde olan URL'leri tekrar çevirmemek için kontrol
+        if (aiMessage.includes(`href="${url}"`)) {
+            return url;
+        }
+        return `<a href="${url}" target="_blank">${url}</a>`;
     });
 
     // Başarılı cevap durumunda statü olarak 'success' gönderiyoruz.
