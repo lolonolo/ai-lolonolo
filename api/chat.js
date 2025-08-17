@@ -3,6 +3,14 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  // YENİ: Vercel'deki her iki API anahtarını da oku
+  const primaryApiKey = process.env.GEMINI_API_KEY;
+  const fallbackApiKey = process.env.GEMINI_API_KEY_FALLBACK;
+  
+  // YENİ: Anahtar artık URL'den çıkarıldı, dinamik olarak eklenecek
+  // Not: Adresteki "generativelaoguage" yazım hatası "generativelanguage" olarak düzeltildi.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`;
+
   const sendFallback = () => {
     const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.  
 <br><br>
@@ -19,10 +27,7 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelaoguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-    
-    // --- YENİ VE BASİTLEŞTİRİLMİŞ SİSTEM TALİMATI ---
+    // MEVCUT SİSTEM TALİMATINIZ KORUNDU
     const systemInstruction = `Sen Lolonolo AI Asistanısın, lolonolo.com'un resmi yapay zeka yardımcısısın. Ana görevin öğrencilere dersleri ve sınavları hakkında yardımcı olmaktır.
 
 **Kaynak Gösterme Kuralı (ÇOK ÖNEMLİ):**
@@ -44,22 +49,43 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
       ]
     };
 
-    const apiResponse = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
+    // --- YENİ: YEDEKLİ API ÇAĞRI MANTIĞI ---
+    let apiResponse;
+    try {
+      console.log("Trying with primary API key...");
+      apiResponse = await fetch(`${url}?key=${primaryApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      if (!apiResponse.ok) throw new Error(`Primary key failed: ${apiResponse.status}`);
+    } catch (primaryError) {
+      console.error("Primary API key failed. Reason:", primaryError.message);
 
-    if (!apiResponse.ok) {
-      console.error('Google AI API Error, fallback devreye giriyor.');
-      return sendFallback();
+      if (fallbackApiKey) {
+        console.log("Trying with fallback API key...");
+        try {
+          apiResponse = await fetch(`${url}?key=${fallbackApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          });
+          if (!apiResponse.ok) throw new Error(`Fallback key also failed: ${apiResponse.status}`);
+        } catch (fallbackError) {
+          console.error("Fallback API key also failed. Reason:", fallbackError.message);
+          return sendFallback();
+        }
+      } else {
+        console.log("No fallback key available.");
+        return sendFallback();
+      }
     }
+    // --- YENİ MANTIK SONU ---
 
     const data = await apiResponse.json();
     let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
 
-    // --- YENİ VE TEK LİNK OLUŞTURMA KODU ---
-    // [Lolonolo Kaynak: ...] formatını her zaman bir ARAMA LİNKİNE çevirir.
+    // MEVCUT LİNK OLUŞTURMA MANTIĞINIZ KORUNDU
     const kaynakRegex = /\[Lolonolo Kaynak: (.*?)\]/g;
     aiMessage = aiMessage.replace(kaynakRegex, (match, p1) => {
         const searchTerm = encodeURIComponent(p1.trim());
@@ -67,7 +93,6 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
         return `<a href="https://lolonolo.com/?s=${searchTerm}" target="_blank">"<strong>${linkMetni}</strong>" konusu hakkında Lolonolo'da arama yapın.</a>`;
     });
     
-    // Standart URL'leri de linke çevirme (ihtiyaç halinde çalışır)
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     if (!aiMessage.includes('</a>')) {
         aiMessage = aiMessage.replace(urlRegex, (url) => `<a href="${url}" target="_blank">${url}</a>`);
@@ -76,7 +101,7 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
     return response.status(200).json({ status: 'success', reply: aiMessage });
 
   } catch (error) {
-    console.error('Genel Hata, fallback devreye giriyor:', error);
+    console.error('General error in handler:', error);
     return sendFallback();
   }
 }
