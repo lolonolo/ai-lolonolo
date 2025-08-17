@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lolonolo AI Asistan | Dersler ve Sınavlar İçin Yapay Zeka Destekli Yardımcı</title>
     <meta name="description" content="Lolonolo AI Asistanı ile anatomi, fizyoloji ve daha birçok derste sorularınıza anında yanıt alın. Ders özetleri, çalışma soruları ve sınav hazırlığı için kişisel yapay zeka yardımcınız.">
+    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MSYBKR11FQ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -13,8 +14,19 @@
 
       gtag('config', 'G-MSYBKR11FQ');
     </script>
+    
+    <script>
+        // ezstandalone objesini başlat
+        window.ezstandalone = window.ezstandalone || {};
+        ezstandalone.cmd = ezstandalone.cmd || [];
+    </script>
+    <script src="https://the.gatekeeperconsent.com/cmp.min.js" async></script>
+    <script src="https://the.gatekeeperconsent.com/ccpa/v2/standalone.js" async></script>
+    <script src="//www.ezojs.com/ezoic/sa.min.js" async></script>
+    
     <link rel="icon" type="image/png" href="https://lolonolo.com/wp-content/uploads/2025/04/lolonolo-favicon.png">
     <link rel="apple-touch-icon" href="https://lolonolo.com/wp-content/uploads/2025/04/lolonolo-favicon.png">
+    
     <style> 
         :root {
             --background-color: #F8F9FA; --container-bg: #FFFFFF; --sidebar-bg: #ECEFF1;
@@ -198,7 +210,7 @@
 
         const startNewChat = () => {
             chatWindow.innerHTML = '';
-            addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+            addMessage('Merhaba! Ben Lolonolo AI. Size nasıl yardımcı olabilirim?', 'assistant');
             inFallbackMode = false;
             promptInput.placeholder = 'Bir mesaj yaz...';
         }
