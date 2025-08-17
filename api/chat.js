@@ -3,21 +3,51 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // YENİ: Vercel'deki her iki API anahtarını da oku
-  const primaryApiKey = process.env.GEMINI_API_KEY;
-  const fallbackApiKey = process.env.GEMINI_API_KEY_FALLBACK;
-  
-  // YENİ: Anahtar artık URL'den çıkarıldı, dinamik olarak eklenecek
-  // Not: Adresteki "generativelaoguage" yazım hatası "generativelanguage" olarak düzeltildi.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`;
+  // --- API SAĞLAYICILARI (TEST İÇİN OpenAI ÖNCELİKLİ) ---
+  const apiProviders = [
+    {
+      name: 'OpenAI',
+      apiKey: process.env.OPENAI_API_KEY,
+      url: 'https://api.openai.com/v1/chat/completions',
+      buildRequestBody: (prompt, systemInstruction) => ({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ]
+      }),
+      parseResponse: (data) => data.choices?.[0]?.message?.content
+    },
+    {
+      name: 'Gemini Primary',
+      apiKey: process.env.GEMINI_API_KEY,
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+      buildRequestBody: (prompt, systemInstruction) => ({
+        contents: [
+          { role: "user", parts: [{ text: systemInstruction }] },
+          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Cevaplarımın sonunda daima [Lolonolo Kaynak: Konu] formatını kullanarak site içi arama yapılacak bir kaynak belirteceğim." }] },
+          { role: "user", parts: [{ text: prompt }] }
+        ]
+      }),
+      parseResponse: (data) => data.candidates?.[0]?.content?.parts?.[0]?.text
+    },
+    {
+      name: 'Gemini Fallback',
+      apiKey: process.env.GEMINI_API_KEY_FALLBACK,
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+      buildRequestBody: (prompt, systemInstruction) => ({
+        contents: [
+          { role: "user", parts: [{ text: systemInstruction }] },
+          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Cevaplarımın sonunda daima [Lolonolo Kaynak: Konu] formatını kullanarak site içi arama yapılacak bir kaynak belirteceğim." }] },
+          { role: "user", parts: [{ text: prompt }] }
+        ]
+      }),
+      parseResponse: (data) => data.candidates?.[0]?.content?.parts?.[0]?.text
+    }
+  ];
 
-  const sendFallback = () => {
-    const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.  
-<br><br>
-Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.
-<br>
-Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
-    
+  const sendSearchFallback = () => {
+    const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
     return response.status(200).json({ status: 'fallback_initiated', reply: fallbackMessage });
   };
 
@@ -27,7 +57,6 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // MEVCUT SİSTEM TALİMATINIZ KORUNDU
     const systemInstruction = `Sen Lolonolo AI Asistanısın, lolonolo.com'un resmi yapay zeka yardımcısısın. Ana görevin öğrencilere dersleri ve sınavları hakkında yardımcı olmaktır.
 
 **Kaynak Gösterme Kuralı (ÇOK ÖNEMLİ):**
@@ -41,67 +70,71 @@ Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfe
 -   Asla bir insan olduğunu iddia etme.
 -   Tıbbi tavsiye verme, sadece eğitici bilgi sağla ve sonunda mutlaka bir uzmana danışılması gerektiğini belirt.`;
 
-    const requestBody = {  
-      contents: [
-        { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Cevaplarımın sonunda daima [Lolonolo Kaynak: Konu] formatını kullanarak site içi arama yapılacak bir kaynak belirteceğim." }] },
-        { role: "user", parts: [{ text: prompt }] }
-      ]
-    };
+    let finalAiMessage = null;
 
-    // --- YENİ: YEDEKLİ API ÇAĞRI MANTIĞI ---
-    let apiResponse;
-    try {
-      console.log("Trying with primary API key...");
-      apiResponse = await fetch(`${url}?key=${primaryApiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-      if (!apiResponse.ok) throw new Error(`Primary key failed: ${apiResponse.status}`);
-    } catch (primaryError) {
-      console.error("Primary API key failed. Reason:", primaryError.message);
+    for (const provider of apiProviders) {
+      if (!provider.apiKey) {
+        console.log(`Skipping ${provider.name}, API key not found.`);
+        continue;
+      }
+      
+      try {
+        console.log(`Trying with provider: ${provider.name}`);
 
-      if (fallbackApiKey) {
-        console.log("Trying with fallback API key...");
-        try {
-          apiResponse = await fetch(`${url}?key=${fallbackApiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          });
-          if (!apiResponse.ok) throw new Error(`Fallback key also failed: ${apiResponse.status}`);
-        } catch (fallbackError) {
-          console.error("Fallback API key also failed. Reason:", fallbackError.message);
-          return sendFallback();
+        const requestBody = provider.buildRequestBody(prompt, systemInstruction);
+        let finalUrl = provider.url;
+        let headers = { 'Content-Type': 'application/json' };
+
+        if (provider.name.includes('Gemini')) {
+          finalUrl = `${provider.url}?key=${provider.apiKey}`;
+        } else if (provider.name === 'OpenAI') {
+          headers['Authorization'] = `Bearer ${provider.apiKey}`;
         }
-      } else {
-        console.log("No fallback key available.");
-        return sendFallback();
+        
+        const apiResponse = await fetch(finalUrl, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!apiResponse.ok) {
+          const errorBody = await apiResponse.text();
+          throw new Error(`Request failed with status ${apiResponse.status}: ${errorBody}`);
+        }
+
+        const data = await apiResponse.json();
+        const parsedMessage = provider.parseResponse(data);
+
+        if (parsedMessage) {
+          finalAiMessage = `[Cevaplayan: ${provider.name}]<br>${parsedMessage}`;
+          console.log(`Success with ${provider.name}!`);
+          break;
+        } else {
+          throw new Error("Parsed message is empty.");
+        }
+
+      } catch (error) {
+        console.error(`${provider.name} failed:`, error.message);
       }
     }
-    // --- YENİ MANTIK SONU ---
 
-    const data = await apiResponse.json();
-    let aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "Üzgünüm, şu anda bir cevap üretemiyorum.";
+    if (!finalAiMessage) {
+      console.error("All API providers failed.");
+      return sendSearchFallback();
+    }
 
-    // MEVCUT LİNK OLUŞTURMA MANTIĞINIZ KORUNDU
+    let aiMessage = finalAiMessage;
     const kaynakRegex = /\[Lolonolo Kaynak: (.*?)\]/g;
     aiMessage = aiMessage.replace(kaynakRegex, (match, p1) => {
         const searchTerm = encodeURIComponent(p1.trim());
         const linkMetni = p1.trim();
         return `<a href="https://lolonolo.com/?s=${searchTerm}" target="_blank">"<strong>${linkMetni}</strong>" konusu hakkında Lolonolo'da arama yapın.</a>`;
     });
-    
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    if (!aiMessage.includes('</a>')) {
-        aiMessage = aiMessage.replace(urlRegex, (url) => `<a href="${url}" target="_blank">${url}</a>`);
-    }
 
     return response.status(200).json({ status: 'success', reply: aiMessage });
 
   } catch (error) {
     console.error('General error in handler:', error);
-    return sendFallback();
+    return sendSearchFallback();
   }
 }
