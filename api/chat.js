@@ -3,21 +3,8 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // --- API SAĞLAYICILARI (TEST İÇİN OpenAI ÖNCELİKLİ) ---
+  // --- API SIRASI NORMALE DÖNDÜRÜLDÜ (GEMINI ÖNCELİKLİ) ---
   const apiProviders = [
-    {
-      name: 'OpenAI',
-      apiKey: process.env.OPENAI_API_KEY,
-      url: 'https://api.openai.com/v1/chat/completions',
-      buildRequestBody: (prompt, systemInstruction) => ({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content: prompt }
-        ]
-      }),
-      parseResponse: (data) => data.choices?.[0]?.message?.content
-    },
     {
       name: 'Gemini Primary',
       apiKey: process.env.GEMINI_API_KEY,
@@ -25,7 +12,7 @@ export default async function handler(request, response) {
       buildRequestBody: (prompt, systemInstruction) => ({
         contents: [
           { role: "user", parts: [{ text: systemInstruction }] },
-          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Cevaplarımın sonunda daima [Lolonolo Kaynak: Konu] formatını kullanarak site içi arama yapılacak bir kaynak belirteceğim." }] },
+          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım..." }] },
           { role: "user", parts: [{ text: prompt }] }
         ]
       }),
@@ -38,11 +25,24 @@ export default async function handler(request, response) {
       buildRequestBody: (prompt, systemInstruction) => ({
         contents: [
           { role: "user", parts: [{ text: systemInstruction }] },
-          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım. Cevaplarımın sonunda daima [Lolonolo Kaynak: Konu] formatını kullanarak site içi arama yapılacak bir kaynak belirteceğim." }] },
+          { role: "model", parts: [{ text: "Anladım. Lolonolo AI Asistanıyım..." }] },
           { role: "user", parts: [{ text: prompt }] }
         ]
       }),
       parseResponse: (data) => data.candidates?.[0]?.content?.parts?.[0]?.text
+    },
+    {
+      name: 'OpenAI',
+      apiKey: process.env.OPENAI_API_KEY,
+      url: 'https://api.openai.com/v1/chat/completions',
+      buildRequestBody: (prompt, systemInstruction) => ({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ]
+      }),
+      parseResponse: (data) => data.choices?.[0]?.message?.content
     }
   ];
 
@@ -106,7 +106,9 @@ export default async function handler(request, response) {
         const parsedMessage = provider.parseResponse(data);
 
         if (parsedMessage) {
-          finalAiMessage = `[Cevaplayan: ${provider.name}]<br>${parsedMessage}`;
+          // --- TEST ETİKETİ KALDIRILDI ---
+          // Cevabın başına artık bir şey eklenmiyor.
+          finalAiMessage = parsedMessage; 
           console.log(`Success with ${provider.name}!`);
           break;
         } else {
