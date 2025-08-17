@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Lolonolo AI Asistan | Dersler ve Sınavlar İçin Yapay Zeka Destekli Yardımcı</title>
-    <meta name="description" content="Lolonolo AI Asistanı ile Auzef, Aöf Açıköğretim  sorularını Segem sınav soruları ve daha birçok derste sorularınıza anında yanıt alın. Ders özetleri, çalışma soruları ve sınav hazırlığı için kişisel yapay zeka yardımcınız.">
-
+    <meta name="description" content="Lolonolo AI Asistanı ile anatomi, fizyoloji ve daha birçok derste sorularınıza anında yanıt alın. Ders özetleri, çalışma soruları ve sınav hazırlığı için kişisel yapay zeka yardımcınız.">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MSYBKR11FQ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -15,17 +13,8 @@
 
       gtag('config', 'G-MSYBKR11FQ');
     </script>
-    
     <link rel="icon" type="image/png" href="https://lolonolo.com/wp-content/uploads/2025/04/lolonolo-favicon.png">
     <link rel="apple-touch-icon" href="https://lolonolo.com/wp-content/uploads/2025/04/lolonolo-favicon.png">
-     <script>
-        // ezstandalone objesini başlat
-        window.ezstandalone = window.ezstandalone || {};
-        ezstandalone.cmd = ezstandalone.cmd || [];
-    </script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" async></script>
-    <script src="https://the.gatekeeperconsent.com/ccpa/v2/standalone.js" async></script>
-    <script src="//www.ezojs.com/ezoic/sa.min.js" async></script>
     <style> 
         :root {
             --background-color: #F8F9FA; --container-bg: #FFFFFF; --sidebar-bg: #ECEFF1;
@@ -105,97 +94,133 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const chatWindow = document.getElementById('chat-window');
-            const promptInput = document.getElementById('prompt-input');
-            const askButton = document.getElementById('ask-button');
-            const newChatBtn = document.getElementById('new-chat-btn');
-            let inFallbackMode = false;
+    document.addEventListener("DOMContentLoaded", function() {
+        const chatWindow = document.getElementById('chat-window');
+        const promptInput = document.getElementById('prompt-input');
+        const askButton = document.getElementById('ask-button');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        let inFallbackMode = false;
 
-            const addMessage = (htmlContent, sender) => {
-                const wrapper = document.createElement('div');
-                wrapper.classList.add('message-wrapper', sender);
-                if (sender === 'assistant') {
-                    const avatar = document.createElement('div');
-                    avatar.classList.add('avatar');
-                    avatar.textContent = 'LN';
-                    wrapper.appendChild(avatar);
-                }
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message');
-                messageElement.innerHTML = htmlContent;
-                wrapper.appendChild(messageElement);
-                chatWindow.appendChild(wrapper);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-                return messageElement;
-            };
+        // STANDART SORULAR VE HAZIR CEVAPLAR LİSTESİ
+        const cannedResponses = {
+            'merhaba': 'Merhaba! Ben Lolonolo AI. Dersler, sınavlar veya SEO hakkında size nasıl yardımcı olabilirim?',
+            'selam': 'Selam! Size nasıl yardımcı olabilirim?',
+            'selamun aleyküm': 'Aleykümselam! Lolonolo AI olarak buradayım, hangi konuda bilgi istersiniz?',
+            'sa': 'Aleykümselam! Nasıl yardımcı olabilirim?',
+            'nasılsın': 'Teşekkür ederim! Ben bir yapay zeka olduğum için her zaman öğrenmeye ve yardıma hazırım. Sizin için ne yapabilirim?',
+            'nasılsın?': 'Teşekkür ederim! Ben bir yapay zeka olduğum için her zaman öğrenmeye ve yardıma hazırım. Sizin için ne yapabilirim?',
+            'iyi misin': 'Harikayım ve yardıma hazırım! Hangi konuda bilgi almak istersiniz?',
+            'iyi misin?': 'Harikayım ve yardıma hazırım! Hangi konuda bilgi almak istersiniz?',
+            'sen kimsin': 'Ben Lolonolo\'nun resmi yapay zeka asistanıyım. Amacım derslerinizde ve projelerinizde size yardımcı olmak.',
+            'sen kimsin?': 'Ben Lolonolo\'nun resmi yapay zeka asistanıyım. Amacım derslerinizde ve projelerinizde size yardımcı olmak.',
+            'ne işe yararsın': 'Öğrencilere dersleri ve sınavları hakkında yardımcı olmak için buradayım. Konu özetleri, soru-cevap ve kaynak önerileri sunabilirim.',
+            'ne işe yararsın?': 'Öğrencilere dersleri ve sınavları hakkında yardımcı olmak için buradayım. Konu özetleri, soru-cevap ve kaynak önerileri sunabilirim.',
+            'teşekkürler': 'Rica ederim! Yardımcı olabileceğim başka bir konu var mı?',
+            'teşekkür ederim': 'Rica ederim! Başka bir sorunuz olursa çekinmeyin.',
+            'sağ ol': 'Ne demek! Her zaman yardımcı olmaya hazırım.',
+            'eyvallah': 'Rica ederim, başka bir isteğiniz var mıydı?',
+            'görüşürüz': 'Görüşmek üzere, iyi çalışmalar dilerim!',
+            'bay bay': 'Hoşça kalın, iyi günler!',
+            'kaç yaşındasın': 'Ben bir yapay zeka olduğum için yaşım yok, ama sürekli olarak güncellenen bilgilere sahibim.',
+            'kaç yaşındasın?': 'Ben bir yapay zeka olduğum için yaşım yok, ama sürekli olarak güncellenen bilgilere sahibim.'
+        };
 
-            const sendMessage = async () => {
-                const prompt = promptInput.value.trim();
-                if (!prompt) return;
-                addMessage(prompt, 'user');
-                promptInput.value = '';
-                promptInput.style.height = 'auto';
-                askButton.disabled = true;
+        const addMessage = (htmlContent, sender) => {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('message-wrapper', sender);
+            if (sender === 'assistant') {
+                const avatar = document.createElement('div');
+                avatar.classList.add('avatar');
+                avatar.textContent = 'LN';
+                wrapper.appendChild(avatar);
+            }
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.innerHTML = htmlContent;
+            wrapper.appendChild(messageElement);
+            chatWindow.appendChild(wrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageElement;
+        };
 
-                if (inFallbackMode) {
-                    const searchQuery = encodeURIComponent(prompt);
-                    const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
-                    const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
-                    addMessage(searchMessage, 'assistant');
-                    inFallbackMode = false;
-                    askButton.disabled = false;
-                    promptInput.focus();
-                    promptInput.placeholder = 'Bir mesaj yaz...';
-                    return;
-                }
+        const sendMessage = async () => {
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+            
+            addMessage(prompt, 'user');
+            
+            const normalizedPrompt = prompt.toLowerCase().trim();
+            promptInput.value = '';
+            promptInput.style.height = 'auto';
 
-                const responseElement = addMessage('...', 'assistant');
-                try {
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt: prompt }),
-                    });
-                    if (!response.ok) throw new Error('Network response was not ok.');
-                    const data = await response.json();
-                    if (data.status === 'fallback_initiated') {
-                        inFallbackMode = true;
-                        promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                    }
-                    responseElement.innerHTML = data.reply;
-                } catch (error) {
-                    inFallbackMode = true;
-                    promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
-                    responseElement.innerHTML = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
-                } finally {
-                    askButton.disabled = false;
-                    promptInput.focus();
-                }
-            };
+            // API ÇAĞRISINDAN ÖNCE STANDART CEVAP KONTROLÜ
+            if (cannedResponses[normalizedPrompt]) {
+                setTimeout(() => {
+                    addMessage(cannedResponses[normalizedPrompt], 'assistant');
+                }, 500);
+                return; 
+            }
+            
+            askButton.disabled = true;
 
-            const startNewChat = () => {
-                chatWindow.innerHTML = '';
-                addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+            if (inFallbackMode) {
+                const searchQuery = encodeURIComponent(prompt);
+                const searchUrl = `https://lolonolo.com/?s=${searchQuery}`;
+                const searchMessage = `Aradığınız konu için Lolonolo'daki sonuçları burada bulabilirsiniz: <a href="${searchUrl}" target="_blank">${prompt}</a>`;
+                addMessage(searchMessage, 'assistant');
                 inFallbackMode = false;
+                askButton.disabled = false;
+                promptInput.focus();
                 promptInput.placeholder = 'Bir mesaj yaz...';
+                return;
             }
 
-            newChatBtn.addEventListener('click', startNewChat);
-            askButton.addEventListener('click', sendMessage);
-            promptInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    sendMessage();
+            const responseElement = addMessage('...', 'assistant');
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt }),
+                });
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const data = await response.json();
+                if (data.status === 'fallback_initiated') {
+                    inFallbackMode = true;
+                    promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
                 }
-            });
-            promptInput.addEventListener('input', () => {
-                promptInput.style.height = 'auto';
-                promptInput.style.height = `${promptInput.scrollHeight}px`;
-            });
-            
-            startNewChat();
+                responseElement.innerHTML = data.reply;
+            } catch (error) {
+                inFallbackMode = true;
+                promptInput.placeholder = 'Aramak istediğiniz konuyu yazın...';
+                responseElement.innerHTML = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
+            } finally {
+                askButton.disabled = false;
+                promptInput.focus();
+            }
+        };
+
+        const startNewChat = () => {
+            chatWindow.innerHTML = '';
+            addMessage('Merhaba, ben LOLONOLO. Hangi ders hakkında bilgi almak istemiştiniz?', 'assistant');
+            inFallbackMode = false;
+            promptInput.placeholder = 'Bir mesaj yaz...';
+        }
+
+        newChatBtn.addEventListener('click', startNewChat);
+        askButton.addEventListener('click', sendMessage);
+        promptInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
         });
+        promptInput.addEventListener('input', () => {
+            promptInput.style.height = 'auto';
+            promptInput.style.height = `${promptInput.scrollHeight}px`;
+        });
+        
+        startNewChat();
+    });
     </script>
     
     <script>
