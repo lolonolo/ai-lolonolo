@@ -1,9 +1,10 @@
+import { kv } from '@vercel/kv';
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // --- API SIRASI NORMALE DÖNDÜRÜLDÜ (GEMINI ÖNCELİKLİ) ---
   const apiProviders = [
     {
       name: 'Gemini Primary',
@@ -43,6 +44,20 @@ export default async function handler(request, response) {
         ]
       }),
       parseResponse: (data) => data.choices?.[0]?.message?.content
+    },
+    // YENİ EKLENEN SAĞLAYICI: DeepSeek
+    {
+      name: 'DeepSeek',
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      url: 'https://api.deepseek.com/chat/completions',
+      buildRequestBody: (prompt, systemInstruction) => ({
+        model: 'deepseek-chat',
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ]
+      }),
+      parseResponse: (data) => data.choices?.[0]?.message?.content
     }
   ];
 
@@ -52,7 +67,7 @@ export default async function handler(request, response) {
   };
 
   try {
-    const { prompt } = await request.body;
+    const { prompt } = request.body;
     if (!prompt) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
@@ -82,13 +97,16 @@ export default async function handler(request, response) {
         console.log(`Trying with provider: ${provider.name}`);
 
         const requestBody = provider.buildRequestBody(prompt, systemInstruction);
-        let finalUrl = provider.url;
-        let headers = { 'Content-Type': 'application/json' };
+        let headers = { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.apiKey}` // OpenAI ve DeepSeek için ortak
+        };
 
+        // Gemini için özel URL yapısı, Authorization başlığına ihtiyaç duymaz
+        let finalUrl = provider.url;
         if (provider.name.includes('Gemini')) {
           finalUrl = `${provider.url}?key=${provider.apiKey}`;
-        } else if (provider.name === 'OpenAI') {
-          headers['Authorization'] = `Bearer ${provider.apiKey}`;
+          delete headers.Authorization; // Gemini için bu başlığı kaldır
         }
         
         const apiResponse = await fetch(finalUrl, {
@@ -106,8 +124,6 @@ export default async function handler(request, response) {
         const parsedMessage = provider.parseResponse(data);
 
         if (parsedMessage) {
-          // --- TEST ETİKETİ KALDIRILDI ---
-          // Cevabın başına artık bir şey eklenmiyor.
           finalAiMessage = parsedMessage; 
           console.log(`Success with ${provider.name}!`);
           break;
