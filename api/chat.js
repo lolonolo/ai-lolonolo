@@ -45,7 +45,6 @@ export default async function handler(request, response) {
       }),
       parseResponse: (data) => data.choices?.[0]?.message?.content
     },
-    // YENİ EKLENEN SAĞLAYICI: DeepSeek
     {
       name: 'DeepSeek',
       apiKey: process.env.DEEPSEEK_API_KEY,
@@ -62,7 +61,7 @@ export default async function handler(request, response) {
   ];
 
   const sendSearchFallback = () => {
-    const fallbackMessage = `Şu an yapay zeka meşgul veya bir sorunla karşılaştı.<br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
+    const fallbackMessage = `Üzgünüm, şu an tüm yapay zeka asistanlarımız meşgul. <br><br>Ancak aradığınız konuyla ilgili Lolonolo'da bir arama yapabilirsiniz. Lütfen aramak istediğiniz konuyu aşağıya yazın.<br>Örnek: <strong>Anatomi 2025 vize soruları</strong>`;
     return response.status(200).json({ status: 'fallback_initiated', reply: fallbackMessage });
   };
 
@@ -72,12 +71,9 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
+    // --- DEĞİŞİKLİK BURADA ---
+    // Sistem talimatından [Lolonolo Kaynak: ...] kuralı kaldırıldı.
     const systemInstruction = `Sen Lolonolo AI Asistanısın, lolonolo.com'un resmi yapay zeka yardımcısısın. Ana görevin öğrencilere dersleri ve sınavları hakkında yardımcı olmaktır.
-
-**Kaynak Gösterme Kuralı (ÇOK ÖNEMLİ):**
--   Cevabının sonunda, bahsettiğin ana konuyla ilgili bir kaynak belirtmek için **her zaman** şu formatı kullan: \`[Lolonolo Kaynak: Araması Yapılacak Konu]\`
--   Örnek: Kullanıcı "miyopi" hakkında soru sorarsa, cevabının sonuna \`[Lolonolo Kaynak: Miyopi ve göz sağlığı]\` şeklinde bir ifade ekle.
--   **ASLA** doğrudan bir URL veya var olmayan bir makale adı yazma. Sadece bu formatı kullan.
 
 **Genel Kurallar:**
 -   Kullanıcılarla samimi, yardımsever ve teşvik edici bir dille konuş.
@@ -99,14 +95,13 @@ export default async function handler(request, response) {
         const requestBody = provider.buildRequestBody(prompt, systemInstruction);
         let headers = { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey}` // OpenAI ve DeepSeek için ortak
+            'Authorization': `Bearer ${provider.apiKey}`
         };
 
-        // Gemini için özel URL yapısı, Authorization başlığına ihtiyaç duymaz
         let finalUrl = provider.url;
         if (provider.name.includes('Gemini')) {
           finalUrl = `${provider.url}?key=${provider.apiKey}`;
-          delete headers.Authorization; // Gemini için bu başlığı kaldır
+          delete headers.Authorization;
         }
         
         const apiResponse = await fetch(finalUrl, {
@@ -140,16 +135,11 @@ export default async function handler(request, response) {
       console.error("All API providers failed.");
       return sendSearchFallback();
     }
-
-    let aiMessage = finalAiMessage;
-    const kaynakRegex = /\[Lolonolo Kaynak: (.*?)\]/g;
-    aiMessage = aiMessage.replace(kaynakRegex, (match, p1) => {
-        const searchTerm = encodeURIComponent(p1.trim());
-        const linkMetni = p1.trim();
-        return `<a href="https://lolonolo.com/?s=${searchTerm}" target="_blank">"<strong>${linkMetni}</strong>" konusu hakkında Lolonolo'da arama yapın.</a>`;
-    });
-
-    return response.status(200).json({ status: 'success', reply: aiMessage });
+    
+    // --- DEĞİŞİKLİK BURADA ---
+    // Artık [Lolonolo Kaynak: ...] etiketini arayıp linke dönüştürme işlemi yok.
+    // Mesaj doğrudan gönderiliyor.
+    return response.status(200).json({ status: 'success', reply: finalAiMessage });
 
   } catch (error) {
     console.error('General error in handler:', error);
